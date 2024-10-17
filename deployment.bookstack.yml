@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: bookstack
+  namespace: default
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      workload.user.cattle.io/workloadselector: apps.deployment-default-bookstack
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        workload.user.cattle.io/workloadselector: apps.deployment-default-bookstack
+        namespace: default
+    spec:
+      containers:
+        - env:
+            - name: APP_URL
+              value: https://bookstack.domain.com.np
+          envFrom:
+            - secretRef:
+                name: bookstack
+                optional: false
+          image: lscr.io/linuxserver/bookstack:latest
+          imagePullPolicy: IfNotPresent
+          name: bookstack
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /config
+              name: app
+        - envFrom:
+            - secretRef:
+                name: bookstack
+                optional: false
+          image: lscr.io/linuxserver/mariadb:latest
+          imagePullPolicy: IfNotPresent
+          name: bookstack-db
+          resources: {}
+          securityContext:
+            allowPrivilegeEscalation: false
+            privileged: false
+            readOnlyRootFilesystem: false
+            runAsNonRoot: false
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          volumeMounts:
+            - mountPath: /config
+              name: db
+      dnsPolicy: ClusterFirst
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - hostPath:
+            path: /bookstack/app-data
+            type: DirectoryOrCreate
+          name: app
+        - hostPath:
+            path: /bookstack/db-data
+            type: ""
+          name: db
